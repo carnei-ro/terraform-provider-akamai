@@ -12,6 +12,7 @@ import (
 	"github.com/apex/log"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/akamai/AkamaiOPEN-edgegrid-golang/v2/pkg/papi"
@@ -84,6 +85,11 @@ func resourceProperty() *schema.Resource {
 		ReadContext:   resourcePropertyRead,
 		UpdateContext: resourcePropertyUpdate,
 		DeleteContext: resourcePropertyDelete,
+		CustomizeDiff: customdiff.All(
+			customdiff.ComputedIf("latest_version", func (ctx context.Context, d *schema.ResourceDiff, meta interface{}) bool {
+				return (d.HasChange("rules") || d.HasChange("hostnames") || d.HasChange("variables") || d.HasChange("rule_format"))
+			}),
+		),
 		Importer: &schema.ResourceImporter{
 			StateContext: resourcePropertyImport,
 		},
@@ -179,7 +185,11 @@ func resourceProperty() *schema.Resource {
 				ValidateDiagFunc: validateRules,
 				DiffSuppressFunc: diffSuppressRules,
 				StateFunc: func(v interface{}) string {
-					return compactJSON([]byte(v.(string)))
+					var js string
+					if json.Unmarshal([]byte(v.(string)), &js) == nil {
+						return compactJSON([]byte(v.(string)))
+					}
+					return v.(string)
 				},
 			},
 			"hostnames": {
@@ -532,6 +542,9 @@ func resourcePropertyUpdate(ctx context.Context, d *schema.ResourceData, m inter
 			return diag.FromErr(err)
 		}
 		Property.LatestVersion = VersionID
+		if err := d.Set("latest_version", VersionID); err != nil {
+			logger.WithError(err).Errorf("could not set %q", VersionID)
+		}
 	}
 
 	// Hostnames
