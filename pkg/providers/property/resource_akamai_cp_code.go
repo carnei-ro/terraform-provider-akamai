@@ -212,9 +212,6 @@ func resourceCPCodeRead(ctx context.Context, d *schema.ResourceData, m interface
 	if err := d.Set("product_id", cpCode.ProductIDs[0]); err != nil {
 		return diag.FromErr(fmt.Errorf("%w: %s", tools.ErrValueSet, err.Error()))
 	}
-	if err := d.Set("product_id", cpCode.ProductIDs[0]); err != nil {
-		return diag.FromErr(fmt.Errorf("%w: %s", tools.ErrValueSet, err.Error()))
-	}
 	d.SetId(cpCode.ID)
 	logger.Debugf("Read CP Code: %+v", cpCode)
 	return nil
